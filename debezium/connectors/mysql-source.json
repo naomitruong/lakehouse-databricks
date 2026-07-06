@@ -1,0 +1,26 @@
+{
+    "name": "mysql-orders-source",
+    "config": {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+        "database.hostname": "${MYSQL_HOST}",
+        "database.port": "3306",
+        "database.user": "debezium",
+        "database.password": "${DEBEZIUM_MYSQL_PASSWORD}",
+        "database.server.id": "184054",
+        "topic.prefix": "cdc",
+        "database.include.list": "source_db",
+        "table.include.list": "source_db.orders,source_db.customers",
+        "schema.history.internal.kafka.bootstrap.servers": "${MSK_BOOTSTRAP_BROKERS}",
+        "schema.history.internal.kafka.topic": "schema-changes.source_db",
+        "schema.history.internal.producer.security.protocol": "SSL",
+        "schema.history.internal.consumer.security.protocol": "SSL",
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.add.fields": "op,ts_ms,db,table",
+        "transforms.unwrap.delete.handling.mode": "rewrite",
+        "transforms.unwrap.drop.tombstones": "false",
+        "decimal.handling.mode": "string",
+        "key.converter.schemas.enable": "false",
+        "value.converter.schemas.enable": "false"
+    }
+}

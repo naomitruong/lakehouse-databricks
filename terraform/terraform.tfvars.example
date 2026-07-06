@@ -1,0 +1,22 @@
+# Copy to terraform.tfvars and fill in real values. Never commit terraform.tfvars.
+
+aws_region   = "us-east-1"
+environment  = "dev"
+project_name = "lakehouse-databricks"
+
+# ---- Secrets (use a secrets manager / CI variable in real use, not plaintext) ----
+db_password              = "CHANGE_ME"
+debezium_mysql_password  = "CHANGE_ME"
+
+# ---- Databricks workspace ----
+# Default path: attach to an existing workspace.
+create_workspace = false
+databricks_host  = "https://<your-workspace>.cloud.databricks.com"
+
+# Only needed if create_workspace = true:
+# databricks_account_id = "<account-id>"
+
+# ---- Unity Catalog ----
+# Default path: reuse a metastore already assigned to the workspace.
+create_metastore = false
+uc_catalog_name  = "lakehouse"

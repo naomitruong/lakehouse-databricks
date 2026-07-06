@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/DATA/Projects/Ref-git-repo/e2e-data-engineer-cloud/debezium/connectors/**)",
+      "Read(//mnt/DATA/Projects/Ref-git-repo/e2e-data-engineer-cloud/trino/catalog/**)",
+      "Read(//mnt/DATA/Projects/Ref-git-repo/e2e-data-engineer-cloud/airflow/dags/**)",
+      "Read(//mnt/DATA/Projects/Ref-git-repo/e2e-data-engineer-cloud/bi_dashboards/**)",
+      "Bash(grep -n \"MYSQL\\\\|SOURCE_DB\\\\|PIPELINE\\\\|DEBEZIUM\\\\|ICEBERG\\\\|TRINO\\\\|MARQUEZ\" /mnt/DATA/Projects/Ref-git-repo/e2e-data-engineer-cloud/.env.example | head -60)",
+      "Read(//mnt/DATA/Projects/Ref-git-repo/e2e-data-engineer-cloud/**)",
+      "Read(//mnt/DATA/Projects/Ref-git-repo/e2e-data-engineer-cloud/marquez/**)",
+      "Bash(chmod +x /mnt/DATA/Projects/Ref-git-repo/lakehouse-databricks/scripts/register_debezium.sh)"
+    ]
+  }
+}

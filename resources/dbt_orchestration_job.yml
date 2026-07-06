@@ -1,0 +1,84 @@
+# Replaces airflow/dags/dbt_orchestration_dag.py. Same layer-ordered task
+# chain (bronze -> silver+tests -> gold+tests -> docs), hourly. The
+# `dbt_task` type runs dbt directly against the SQL Warehouse — there is
+# no "docker exec dbt dbt run" step and no dbt-ol / OpenLineage wrapper,
+# because Unity Catalog captures table- and column-level lineage for every
+# dbt model automatically (see governance/unity_catalog_lineage.md).
+
+resources:
+  jobs:
+    dbt_orchestration_job:
+      name: dbt-orchestration
+      description: "Runs dbt models in layer order with quality tests after each layer. Replaces dbt_orchestration_dag."
+      tags:
+        project: lakehouse-databricks
+        layer: silver-gold
+
+      schedule:
+        quartz_cron_expression: "0 0 * * * ?"
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
+
+      max_concurrent_runs: 1
+
+      tasks:
+        - task_key: dbt_deps
+          sql_warehouse_id: ${var.sql_warehouse_id}
+          dbt_task:
+            project_directory: ../dbt
+            commands:
+              - "dbt deps"
+
+        - task_key: dbt_run_bronze
+          depends_on:
+            - task_key: dbt_deps
+          sql_warehouse_id: ${var.sql_warehouse_id}
+          dbt_task:
+            project_directory: ../dbt
+            commands:
+              - "dbt run --select bronze"
+
+        - task_key: dbt_run_silver
+          depends_on:
+            - task_key: dbt_run_bronze
+          sql_warehouse_id: ${var.sql_warehouse_id}
+          dbt_task:
+            project_directory: ../dbt
+            commands:
+              - "dbt run --select silver"
+
+        - task_key: dbt_test_silver
+          depends_on:
+            - task_key: dbt_run_silver
+          sql_warehouse_id: ${var.sql_warehouse_id}
+          dbt_task:
+            project_directory: ../dbt
+            commands:
+              - "dbt test --select silver"
+
+        - task_key: dbt_run_gold
+          depends_on:
+            - task_key: dbt_test_silver
+          sql_warehouse_id: ${var.sql_warehouse_id}
+          dbt_task:
+            project_directory: ../dbt
+            commands:
+              - "dbt run --select gold"
+
+        - task_key: dbt_test_gold
+          depends_on:
+            - task_key: dbt_run_gold
+          sql_warehouse_id: ${var.sql_warehouse_id}
+          dbt_task:
+            project_directory: ../dbt
+            commands:
+              - "dbt test --select gold"
+
+        - task_key: dbt_generate_docs
+          depends_on:
+            - task_key: dbt_test_gold
+          sql_warehouse_id: ${var.sql_warehouse_id}
+          dbt_task:
+            project_directory: ../dbt
+            commands:
+              - "dbt docs generate"

@@ -1,0 +1,5 @@
+dbt-databricks>=1.8,<2.0
+databricks-sql-connector>=3.0
+databricks-sdk>=0.20
+pandas>=2.0
+requests>=2.31

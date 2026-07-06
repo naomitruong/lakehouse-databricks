@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: orders_silver
+    description: "Deduped latest state of orders — deletes removed, one row per order_id"
+    columns:
+      - name: order_id
+        description: "Primary key"
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: "FK to customers_silver"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('customers_silver')
+              field: customer_id
+      - name: amount
+        description: "Order amount in USD"
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: last_operation
+        description: "Last CDC operation: c=create, u=update (d excluded)"
+        tests:
+          - accepted_values:
+              values: ['c', 'u', 'r']
+
+  - name: customers_silver
+    description: "Deduped latest state of customers"
+    columns:
+      - name: customer_id
+        tests:
+          - unique
+          - not_null
+      - name: customer_name
+        tests:
+          - not_null

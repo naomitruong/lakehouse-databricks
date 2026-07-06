@@ -1,0 +1,49 @@
+# Replaces airflow/dags/kafka_to_bronze_batch_dag.py.
+# Same cadence (every 10 minutes) and same task order (orders, then
+# customers); "spark-submit --packages ..." becomes a notebook task on a
+# small job cluster instead, since the Kafka/Delta connectors ship with
+# the Databricks Runtime.
+
+resources:
+  jobs:
+    cdc_bronze_ingestion_job:
+      name: cdc-bronze-ingestion
+      description: "Kafka (MSK) CDC topics -> Delta Bronze tables. Replaces kafka_to_bronze_batch_dag."
+      tags:
+        project: lakehouse-databricks
+        layer: bronze
+
+      schedule:
+        quartz_cron_expression: "0 */10 * * * ?"
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
+
+      max_concurrent_runs: 1
+
+      job_clusters:
+        - job_cluster_key: bronze_ingestion_cluster
+          new_cluster:
+            spark_version: ${var.spark_version}
+            node_type_id: ${var.job_node_type}
+            num_workers: 1
+            policy_id: ${var.job_cluster_policy_id}
+            data_security_mode: SINGLE_USER
+
+      tasks:
+        - task_key: bronze_orders
+          job_cluster_key: bronze_ingestion_cluster
+          notebook_task:
+            notebook_path: ../src/streaming/bronze_orders_stream.py
+            base_parameters:
+              catalog: ${var.uc_catalog}
+              checkpoint_root: ${var.checkpoint_root}
+
+        - task_key: bronze_customers
+          depends_on:
+            - task_key: bronze_orders
+          job_cluster_key: bronze_ingestion_cluster
+          notebook_task:
+            notebook_path: ../src/streaming/bronze_customers_stream.py
+            base_parameters:
+              catalog: ${var.uc_catalog}
+              checkpoint_root: ${var.checkpoint_root}

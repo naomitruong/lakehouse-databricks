@@ -1,0 +1,42 @@
+# Databricks Asset Bundle — replaces airflow/dags/*.py as the
+# "orchestration as code" layer. `databricks bundle deploy` uploads the
+# notebooks + dbt project and creates/updates the two Workflows defined
+# under resources/; `databricks bundle run <job>` is the equivalent of
+# triggering an Airflow DAG manually from the UI/CLI.
+
+bundle:
+  name: lakehouse-databricks
+
+variables:
+  databricks_host:
+    description: "Workspace URL — same value as terraform output workspace_url"
+  uc_catalog:
+    description: "Unity Catalog catalog name"
+    default: lakehouse
+  checkpoint_root:
+    description: "S3 path for streaming checkpoints — terraform output checkpoints_bucket"
+    default: s3://REPLACE_WITH_CHECKPOINTS_BUCKET/bronze
+  spark_version:
+    default: 15.4.x-scala2.12
+  job_node_type:
+    default: m5d.large
+  sql_warehouse_id:
+    description: "terraform output databricks_sql_warehouse_id"
+  job_cluster_policy_id:
+    description: "ID of databricks_cluster_policy.job_clusters (terraform state / `databricks cluster-policies list`)"
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: ${var.databricks_host}
+  prod:
+    mode: production
+    workspace:
+      host: ${var.databricks_host}
+    run_as:
+      service_principal_name: "lakehouse-databricks-prod-sp"

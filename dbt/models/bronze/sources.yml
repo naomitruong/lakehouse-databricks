@@ -1,0 +1,11 @@
+version: 2
+sources:
+  - name: bronze_delta
+    database: "{{ env_var('UC_CATALOG', 'lakehouse') }}"
+    schema: bronze
+    description: "Raw CDC events written by the Databricks Structured Streaming jobs in src/streaming/ — append-only, immutable."
+    tables:
+      - name: orders
+        description: "All CDC events from MySQL orders (c/u/d/r ops preserved via _cdc_op)"
+      - name: customers
+        description: "All CDC events from MySQL customers"
