@@ -15,70 +15,90 @@ resources:
         layer: silver-gold
 
       schedule:
-        quartz_cron_expression: "0 0 * * * ?"
+        quartz_cron_expression: "0 0 */3 * * ?"
         timezone_id: "UTC"
         pause_status: UNPAUSED
 
       max_concurrent_runs: 1
 
+      environments:
+        - environment_key: dbt_env
+          spec:
+            environment_version: "2"
+            dependencies:
+              - dbt-databricks>=1.8,<2.0
+
       tasks:
-        - task_key: dbt_deps
-          sql_warehouse_id: ${var.sql_warehouse_id}
+        - task_key: dbt_run_bronze
+          environment_key: dbt_env
           dbt_task:
+            warehouse_id: ${var.sql_warehouse_id}
+            catalog: ${var.uc_catalog}
+            schema: bronze
             project_directory: ../dbt
             commands:
               - "dbt deps"
-
-        - task_key: dbt_run_bronze
-          depends_on:
-            - task_key: dbt_deps
-          sql_warehouse_id: ${var.sql_warehouse_id}
-          dbt_task:
-            project_directory: ../dbt
-            commands:
               - "dbt run --select bronze"
 
         - task_key: dbt_run_silver
           depends_on:
             - task_key: dbt_run_bronze
-          sql_warehouse_id: ${var.sql_warehouse_id}
+          environment_key: dbt_env
           dbt_task:
+            warehouse_id: ${var.sql_warehouse_id}
+            catalog: ${var.uc_catalog}
+            schema: bronze
             project_directory: ../dbt
             commands:
+              - "dbt deps"
               - "dbt run --select silver"
 
         - task_key: dbt_test_silver
           depends_on:
             - task_key: dbt_run_silver
-          sql_warehouse_id: ${var.sql_warehouse_id}
+          environment_key: dbt_env
           dbt_task:
+            warehouse_id: ${var.sql_warehouse_id}
+            catalog: ${var.uc_catalog}
+            schema: bronze
             project_directory: ../dbt
             commands:
+              - "dbt deps"
               - "dbt test --select silver"
 
         - task_key: dbt_run_gold
           depends_on:
-            - task_key: dbt_test_silver
-          sql_warehouse_id: ${var.sql_warehouse_id}
+            - task_key: dbt_run_silver
+          environment_key: dbt_env
           dbt_task:
+            warehouse_id: ${var.sql_warehouse_id}
+            catalog: ${var.uc_catalog}
+            schema: bronze
             project_directory: ../dbt
             commands:
+              - "dbt deps"
               - "dbt run --select gold"
 
         - task_key: dbt_test_gold
           depends_on:
             - task_key: dbt_run_gold
-          sql_warehouse_id: ${var.sql_warehouse_id}
+          environment_key: dbt_env
           dbt_task:
+            warehouse_id: ${var.sql_warehouse_id}
+            catalog: ${var.uc_catalog}
+            schema: bronze
             project_directory: ../dbt
             commands:
+              - "dbt deps"
               - "dbt test --select gold"
 
         - task_key: dbt_generate_docs
-          depends_on:
-            - task_key: dbt_test_gold
-          sql_warehouse_id: ${var.sql_warehouse_id}
+          environment_key: dbt_env
           dbt_task:
+            warehouse_id: ${var.sql_warehouse_id}
+            catalog: ${var.uc_catalog}
+            schema: bronze
             project_directory: ../dbt
             commands:
+              - "dbt deps"
               - "dbt docs generate"

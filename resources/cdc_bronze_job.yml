@@ -1,8 +1,10 @@
 # Replaces airflow/dags/kafka_to_bronze_batch_dag.py.
 # Same cadence (every 10 minutes) and same task order (orders, then
-# customers); "spark-submit --packages ..." becomes a notebook task on a
-# small job cluster instead, since the Kafka/Delta connectors ship with
-# the Databricks Runtime.
+# customers); "spark-submit --packages ..." becomes a notebook task.
+# Runs on a classic job cluster (not serverless) inside the VPC private
+# subnets, since serverless compute has no network path to the MSK
+# brokers (see terraform/security.tf's msk security group, which only
+# allows ingress from within the VPC CIDR).
 
 resources:
   jobs:
@@ -14,24 +16,25 @@ resources:
         layer: bronze
 
       schedule:
-        quartz_cron_expression: "0 */10 * * * ?"
+        quartz_cron_expression: "0 0 */3 * * ?"
         timezone_id: "UTC"
         pause_status: UNPAUSED
 
       max_concurrent_runs: 1
 
       job_clusters:
-        - job_cluster_key: bronze_ingestion_cluster
+        - job_cluster_key: bronze_stream_cluster
           new_cluster:
-            spark_version: ${var.spark_version}
+            spark_version: ${var.job_spark_version}
             node_type_id: ${var.job_node_type}
-            num_workers: 1
             policy_id: ${var.job_cluster_policy_id}
-            data_security_mode: SINGLE_USER
+            autoscale:
+              min_workers: 1
+              max_workers: 2
 
       tasks:
         - task_key: bronze_orders
-          job_cluster_key: bronze_ingestion_cluster
+          job_cluster_key: bronze_stream_cluster
           notebook_task:
             notebook_path: ../src/streaming/bronze_orders_stream.py
             base_parameters:
@@ -41,7 +44,7 @@ resources:
         - task_key: bronze_customers
           depends_on:
             - task_key: bronze_orders
-          job_cluster_key: bronze_ingestion_cluster
+          job_cluster_key: bronze_stream_cluster
           notebook_task:
             notebook_path: ../src/streaming/bronze_customers_stream.py
             base_parameters:

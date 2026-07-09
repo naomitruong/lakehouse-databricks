@@ -78,6 +78,12 @@ resource "databricks_mws_credentials" "this" {
   account_id       = var.databricks_account_id
   role_arn         = aws_iam_role.databricks_cross_account[0].arn
   credentials_name = "${var.project_name}-creds"
+
+  # Nothing else references the inline policy's output, so without this
+  # Terraform has no reason to create it before the role gets used —
+  # leaving the cross-account role with no EC2 permissions when Databricks
+  # validates it.
+  depends_on = [aws_iam_role_policy.databricks_cross_account]
 }
 
 resource "databricks_mws_storage_configurations" "this" {
@@ -86,6 +92,12 @@ resource "databricks_mws_storage_configurations" "this" {
   account_id                 = var.databricks_account_id
   bucket_name                = aws_s3_bucket.workspace_root[0].bucket
   storage_configuration_name = "${var.project_name}-storage"
+
+  # Same missing-dependency issue as the cross-account role policy above:
+  # nothing references the bucket policy's output, so without this Databricks
+  # validates List/Put/Delete access on the bucket before the policy granting
+  # it exists.
+  depends_on = [aws_s3_bucket_policy.workspace_root]
 }
 
 resource "databricks_mws_networks" "this" {
@@ -134,4 +146,6 @@ resource "databricks_mws_workspaces" "this" {
   credentials_id           = databricks_mws_credentials.this[0].credentials_id
   storage_configuration_id = databricks_mws_storage_configurations.this[0].storage_configuration_id
   network_id               = databricks_mws_networks.this[0].network_id
+
+  depends_on = [aws_iam_role_policy.databricks_cross_account]
 }

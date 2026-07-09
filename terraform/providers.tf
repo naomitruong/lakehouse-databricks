@@ -14,6 +14,14 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.11"
+    }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.2"
+    }
   }
 
   # Uncomment for remote state (recommended for teams)
@@ -46,6 +54,7 @@ provider "databricks" {
   alias      = "account"
   host       = "https://accounts.cloud.databricks.com"
   account_id = var.databricks_account_id
+  profile    = "account"
 }
 
 # Workspace-level provider — used for Unity Catalog objects, SQL warehouses,
@@ -53,5 +62,9 @@ provider "databricks" {
 # workspace created below (if create_workspace = true) or an existing one
 # (var.databricks_host / DATABRICKS_TOKEN env var).
 provider "databricks" {
-  host = var.create_workspace ? "https://${databricks_mws_workspaces.this[0].workspace_url}" : var.databricks_host
+  # workspace_url already includes the https:// scheme — do not prepend it
+  # again here (doing so produces "https://https://..." which the SDK
+  # fails to parse, misresolving "https" itself as the hostname).
+  host    = var.create_workspace ? databricks_mws_workspaces.this[0].workspace_url : var.databricks_host
+  profile = "new-workspace"
 }

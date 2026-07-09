@@ -86,6 +86,11 @@ variable "debezium_mysql_password" {
   sensitive   = true
 }
 
+variable "admin_ip_cidr" {
+  description = "CIDR of the admin's public IP, allowed to reach RDS directly (e.g. for DBeaver)"
+  type        = string
+}
+
 # =============================================================
 # Amazon MSK — replaces self-hosted Zookeeper + Kafka containers
 # =============================================================
@@ -111,6 +116,51 @@ variable "msk_ebs_volume_size" {
   description = "EBS volume size (GB) per MSK broker"
   type        = number
   default     = 100
+}
+
+# =============================================================
+# Debezium — Kafka Connect worker running the MySQL CDC connector
+# (terraform/debezium.tf), replaces the self-managed debezium/connect
+# container from the original docker-compose stack
+# =============================================================
+variable "debezium_connect_image" {
+  description = "Container image for the Kafka Connect worker running Debezium"
+  type        = string
+  default     = "debezium/connect:2.5"
+}
+
+variable "debezium_task_cpu" {
+  description = "Fargate task vCPU units for the Debezium Kafka Connect worker"
+  type        = number
+  default     = 1024
+}
+
+variable "debezium_task_memory" {
+  description = "Fargate task memory (MiB) for the Debezium Kafka Connect worker"
+  type        = number
+  default     = 2048
+}
+
+# =============================================================
+# AKHQ — Kafka UI for browsing topics/messages and Kafka Connect
+# status, replaces the original docker-compose stack's AKHQ container
+# =============================================================
+variable "akhq_image" {
+  description = "Container image for the AKHQ Kafka UI"
+  type        = string
+  default     = "tchiotludo/akhq:0.24.0"
+}
+
+variable "akhq_task_cpu" {
+  description = "Fargate task vCPU units for AKHQ"
+  type        = number
+  default     = 512
+}
+
+variable "akhq_task_memory" {
+  description = "Fargate task memory (MiB) for AKHQ"
+  type        = number
+  default     = 1024
 }
 
 # =============================================================
@@ -165,6 +215,12 @@ variable "create_metastore" {
   description = "Whether to create+assign a new UC metastore for this region, vs. reuse one already assigned to the workspace"
   type        = bool
   default     = false
+}
+
+variable "existing_metastore_id" {
+  description = "ID of an already-existing UC metastore to assign to the workspace (only used when create_metastore = false and create_workspace = true — a newly created workspace has no metastore assigned yet)"
+  type        = string
+  default     = ""
 }
 
 # =============================================================

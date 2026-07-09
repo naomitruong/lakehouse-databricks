@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>lakehouse-databricks — CDC Medallion Lakehouse on AWS + Databricks</title>
+<meta name="description" content="A Databricks-native CDC → Bronze/Silver/Gold lakehouse, deployed on AWS with Terraform and orchestrated via Databricks Workflows." />
+<style>
+  :root {
+    --bg: #0b0e14;
+    --bg-alt: #11151f;
+    --card: #151a26;
+    --card-border: #232a3a;
+    --text: #e7eaf2;
+    --text-dim: #9aa4b8;
+    --accent: #4fd1c5;
+    --accent-2: #7c9cff;
+    --accent-3: #f2b04c;
+    --ok: #57d38c;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f7fb;
+      --bg-alt: #ffffff;
+      --card: #ffffff;
+      --card-border: #e3e6ee;
+      --text: #1a1f2b;
+      --text-dim: #5b6472;
+      --accent: #0d9488;
+      --accent-2: #4457c9;
+      --accent-3: #b5750f;
+      --ok: #1f9d5c;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7fb;
+    --bg-alt: #ffffff;
+    --card: #ffffff;
+    --card-border: #e3e6ee;
+    --text: #1a1f2b;
+    --text-dim: #5b6472;
+    --accent: #0d9488;
+    --accent-2: #4457c9;
+    --accent-3: #b5750f;
+    --ok: #1f9d5c;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0e14;
+    --bg-alt: #11151f;
+    --card: #151a26;
+    --card-border: #232a3a;
+    --text: #e7eaf2;
+    --text-dim: #9aa4b8;
+    --accent: #4fd1c5;
+    --accent-2: #7c9cff;
+    --accent-3: #f2b04c;
+    --ok: #57d38c;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---- Hero ---- */
+  header.hero {
+    padding: 88px 0 56px;
+    background:
+      radial-gradient(600px 300px at 15% -10%, color-mix(in srgb, var(--accent) 18%, transparent), transparent),
+      radial-gradient(600px 300px at 85% -10%, color-mix(in srgb, var(--accent-2) 18%, transparent), transparent);
+    border-bottom: 1px solid var(--card-border);
+  }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    color: var(--ok);
+    background: color-mix(in srgb, var(--ok) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent);
+    padding: 6px 12px;
+    border-radius: 999px;
+    margin-bottom: 22px;
+  }
+  .status-badge .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 45%, transparent); }
+    70%  { box-shadow: 0 0 0 8px color-mix(in srgb, var(--ok) 0%, transparent); }
+    100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 0%, transparent); }
+  }
+  h1.title {
+    font-size: clamp(32px, 5vw, 48px);
+    line-height: 1.1;
+    margin: 0 0 14px;
+    letter-spacing: -0.02em;
+  }
+  h1.title span { color: var(--accent); }
+  p.subtitle {
+    font-size: clamp(16px, 2.2vw, 19px);
+    color: var(--text-dim);
+    max-width: 640px;
+    margin: 0 0 28px;
+  }
+  .hero-links { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14.5px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); border-color: var(--accent); }
+  .btn.primary {
+    background: var(--accent);
+    color: #05201d;
+    border-color: var(--accent);
+  }
+  .btn.primary:hover { border-color: var(--accent); }
+
+  /* ---- Sections ---- */
+  section { padding: 56px 0; border-bottom: 1px solid var(--card-border); }
+  section:last-of-type { border-bottom: none; }
+  h2.section-title {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent-2);
+    font-family: var(--mono);
+    margin: 0 0 8px;
+  }
+  h3.section-heading {
+    font-size: 26px;
+    margin: 0 0 32px;
+    letter-spacing: -0.01em;
+  }
+
+  /* ---- Pipeline diagram ---- */
+  .pipeline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0;
+    background: var(--bg-alt);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 28px;
+    overflow-x: auto;
+  }
+  .stage-group { display: flex; align-items: center; flex: 0 0 auto; }
+  .stage {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    min-width: 132px;
+    text-align: center;
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+  .stage .stage-sub {
+    display: block;
+    font-weight: 400;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+  .stage.bronze { border-top: 3px solid #b8865e; }
+  .stage.silver { border-top: 3px solid #a9b2c3; }
+  .stage.gold   { border-top: 3px solid var(--accent-3); }
+  .stage.source { border-top: 3px solid var(--accent-2); }
+  .stage.serve  { border-top: 3px solid var(--accent); }
+  .arrow {
+    color: var(--text-dim);
+    font-family: var(--mono);
+    padding: 0 10px;
+    font-size: 18px;
+    flex: 0 0 auto;
+  }
+
+  /* ---- Grid cards ---- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .card .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-radius: 5px;
+    padding: 2px 8px;
+    margin-bottom: 10px;
+  }
+  .card h4 { margin: 0 0 6px; font-size: 16px; }
+  .card p { margin: 0; color: var(--text-dim); font-size: 13.5px; }
+
+  /* ---- Table ---- */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--card-border); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 640px; }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--card-border); }
+  th {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    background: var(--bg-alt);
+  }
+  tr:last-child td { border-bottom: none; }
+  td.replaced { color: var(--text-dim); text-decoration: line-through; }
+  td.mono { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
+
+  /* ---- Jobs ---- */
+  .job-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 22px 24px;
+    margin-bottom: 16px;
+  }
+  .job-card .job-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .job-card h4 { margin: 0; font-family: var(--mono); font-size: 15px; }
+  .job-status {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ok);
+    background: color-mix(in srgb, var(--ok) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent);
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+  .job-tasks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 10px;
+  }
+  .job-tasks span.step {
+    background: var(--bg-alt);
+    border: 1px solid var(--card-border);
+    padding: 4px 9px;
+    border-radius: 6px;
+  }
+  .job-tasks span.sep { color: var(--card-border); align-self: center; }
+
+  /* ---- Footer ---- */
+  footer {
+    padding: 40px 0 60px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  code.inline {
+    font-family: var(--mono);
+    background: var(--bg-alt);
+    border: 1px solid var(--card-border);
+    padding: 1px 6px;
+    border-radius: 5px;
+    font-size: 0.92em;
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="status-badge"><span class="dot"></span>DEPLOYED — live on AWS, both jobs running with real data</span>
+    <h1 class="title">lakehouse-<span>databricks</span></h1>
+    <p class="subtitle">
+      A CDC-driven Medallion lakehouse (Bronze → Silver → Gold) built on
+      Delta Lake + Unity Catalog, fed by Debezium/MSK, transformed with dbt,
+      and orchestrated by Databricks Workflows — infrastructure entirely as
+      code on AWS via Terraform.
+    </p>
+    <div class="hero-links">
+      <a class="btn primary" href="https://github.com/naomitruong/lakehouse-databricks">View on GitHub →</a>
+      <a class="btn" href="https://github.com/naomitruong/lakehouse-databricks/blob/main/ARCHITECTURE.md">Architecture doc</a>
+      <a class="btn" href="https://github.com/naomitruong/lakehouse-databricks/blob/main/DEMO_SCENARIOS.md">Demo scenarios</a>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2 class="section-title">Data Flow</h2>
+    <h3 class="section-heading">MySQL → Kafka → Delta → dbt → BI</h3>
+    <div class="pipeline">
+      <div class="stage-group">
+        <div class="stage source">RDS MySQL<span class="stage-sub">binlog CDC source</span></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stage-group">
+        <div class="stage source">Debezium<span class="stage-sub">ECS Fargate</span></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stage-group">
+        <div class="stage source">Amazon MSK<span class="stage-sub">cdc.source_db.*</span></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stage-group">
+        <div class="stage bronze">Bronze<span class="stage-sub">Structured Streaming</span></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stage-group">
+        <div class="stage silver">Silver<span class="stage-sub">dbt incremental merge</span></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stage-group">
+        <div class="stage gold">Gold<span class="stage-sub">dbt table models</span></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="stage-group">
+        <div class="stage serve">SQL Warehouse<span class="stage-sub">+ BI tools</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="section-title">Tech Stack</h2>
+    <h3 class="section-heading">AWS underneath, Databricks on top</h3>
+    <div class="grid">
+      <div class="card">
+        <span class="tag">source</span>
+        <h4>Amazon RDS for MySQL</h4>
+        <p>Binlog-enabled OLTP source, custom DB parameter group.</p>
+      </div>
+      <div class="card">
+        <span class="tag">CDC</span>
+        <h4>Debezium</h4>
+        <p>Self-managed Kafka Connect worker on ECS/Fargate, private subnet.</p>
+      </div>
+      <div class="card">
+        <span class="tag">streaming</span>
+        <h4>Amazon MSK</h4>
+        <p>Managed Kafka — durable CDC event log, topic per table.</p>
+      </div>
+      <div class="card">
+        <span class="tag">observability</span>
+        <h4>AKHQ</h4>
+        <p>Kafka UI on ECS/Fargate for browsing topics and connector status.</p>
+      </div>
+      <div class="card">
+        <span class="tag">storage</span>
+        <h4>Amazon S3 + Delta Lake</h4>
+        <p>ACID table storage, time travel, schema evolution.</p>
+      </div>
+      <div class="card">
+        <span class="tag">catalog</span>
+        <h4>Unity Catalog</h4>
+        <p>Table metadata, grants, automatic lineage — no separate service.</p>
+      </div>
+      <div class="card">
+        <span class="tag">ingestion</span>
+        <h4>Databricks Structured Streaming</h4>
+        <p>Kafka → Bronze Delta, <code class="inline">trigger(availableNow=True)</code>.</p>
+      </div>
+      <div class="card">
+        <span class="tag">transform</span>
+        <h4>dbt-databricks</h4>
+        <p>Bronze (ephemeral) → Silver (incremental merge) → Gold (table).</p>
+      </div>
+      <div class="card">
+        <span class="tag">compute</span>
+        <h4>SQL Warehouse</h4>
+        <p>Interactive SQL + dbt execution engine.</p>
+      </div>
+      <div class="card">
+        <span class="tag">orchestration</span>
+        <h4>Databricks Workflows</h4>
+        <p>Defined as code via a Databricks Asset Bundle — no Airflow.</p>
+      </div>
+      <div class="card">
+        <span class="tag">IaC</span>
+        <h4>Terraform</h4>
+        <p><code class="inline">aws</code> + <code class="inline">databricks</code> providers, one apply.</p>
+      </div>
+      <div class="card">
+        <span class="tag">BI</span>
+        <h4>databricks-sql-connector</h4>
+        <p>Exports Gold tables to Tableau / Looker / Power BI.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="section-title">Orchestration</h2>
+    <h3 class="section-heading">Two Databricks Workflows, running on a 3-hour cron</h3>
+
+    <div class="job-card">
+      <div class="job-head">
+        <h4>cdc_bronze_ingestion_job</h4>
+        <span class="job-status">✓ ran successfully</span>
+      </div>
+      <p style="margin:0;color:var(--text-dim);font-size:13.5px;">
+        Kafka (MSK) CDC topics → Delta Bronze tables. Classic job cluster inside the VPC (serverless has no network path to MSK).
+      </p>
+      <div class="job-tasks">
+        <span class="step">bronze_orders</span><span class="sep">→</span><span class="step">bronze_customers</span>
+      </div>
+    </div>
+
+    <div class="job-card">
+      <div class="job-head">
+        <h4>dbt_orchestration_job</h4>
+        <span class="job-status">✓ ran successfully</span>
+      </div>
+      <p style="margin:0;color:var(--text-dim);font-size:13.5px;">
+        Runs dbt models in layer order with quality tests gating each transition.
+      </p>
+      <div class="job-tasks">
+        <span class="step">dbt_run_bronze</span><span class="sep">→</span>
+        <span class="step">dbt_run_silver</span><span class="sep">→</span>
+        <span class="step">dbt_test_silver</span><span class="sep">→</span>
+        <span class="step">dbt_run_gold</span><span class="sep">→</span>
+        <span class="step">dbt_test_gold</span><span class="sep">→</span>
+        <span class="step">dbt_generate_docs</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="section-title">Component Mapping</h2>
+    <h3 class="section-heading">Every self-hosted piece, swapped for a managed one</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Original (self-hosted)</th><th>This project</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Message bus</td><td class="replaced">Kafka + Zookeeper containers</td><td class="mono">Amazon MSK</td></tr>
+          <tr><td>Object storage</td><td class="replaced">MinIO</td><td class="mono">Amazon S3</td></tr>
+          <tr><td>Table format</td><td class="replaced">Apache Iceberg</td><td class="mono">Delta Lake</td></tr>
+          <tr><td>Catalog</td><td class="replaced">Iceberg REST catalog</td><td class="mono">Unity Catalog</td></tr>
+          <tr><td>Query engine</td><td class="replaced">Trino</td><td class="mono">Databricks SQL Warehouse</td></tr>
+          <tr><td>Transform</td><td class="replaced">dbt-trino</td><td class="mono">dbt-databricks</td></tr>
+          <tr><td>Orchestrator</td><td class="replaced">Airflow</td><td class="mono">Databricks Workflows (Asset Bundle)</td></tr>
+          <tr><td>Lineage</td><td class="replaced">OpenLineage + Marquez</td><td class="mono">Unity Catalog (automatic)</td></tr>
+          <tr><td>ML tracking</td><td class="replaced">Self-hosted MLflow</td><td class="mono">Databricks Managed MLflow</td></tr>
+          <tr><td>Compute platform</td><td class="replaced">EKS + Helm</td><td class="mono">Databricks (serverless SQL + job clusters)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>
+      Full write-up in <a href="https://github.com/naomitruong/lakehouse-databricks/blob/main/README.md">README.md</a>
+      and <a href="https://github.com/naomitruong/lakehouse-databricks/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a>.
+      Source on <a href="https://github.com/naomitruong/lakehouse-databricks">GitHub</a>.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

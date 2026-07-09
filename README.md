@@ -1,5 +1,10 @@
 # lakehouse-databricks
 
+**Status: deployed.** `terraform apply` and `databricks bundle deploy` have
+both run against a live AWS + Databricks workspace; `cdc_bronze_ingestion_job`
+and `dbt_orchestration_job` have each completed successful runs with real
+data flowing MySQL → Bronze → Silver → Gold.
+
 A Databricks-native rebuild of [`e2e-data-engineer-cloud`](../e2e-data-engineer-cloud)'s
 Medallion lakehouse (see that project's `LAKEHOUSE_V2_PLAN.txt`). Same demo
 scenarios — CDC ingestion, Bronze/Silver/Gold, dbt transformations,
@@ -44,7 +49,8 @@ stack to babysit.
 | Layer | Original (`e2e-data-engineer-cloud`) | This project (`lakehouse-databricks`) | Where |
 |---|---|---|---|
 | Source OLTP | `mysql:8.0` container, binlog enabled via `command:` flags | Amazon RDS for MySQL, binlog enabled via a custom DB parameter group | `terraform/rds.tf`, `scripts/init_mysql_cdc.sql` |
-| CDC capture | Debezium (`debezium/connect:2.5` container) | Same Debezium connector config, deployed on MSK Connect (or a small self-managed Kafka Connect worker) | `debezium/connectors/mysql-source.json`, `debezium/README.md` |
+| CDC capture | Debezium (`debezium/connect:2.5` container) | Same Debezium connector config; deployed (this repo's default) as the same image on a self-managed Kafka Connect worker on ECS/Fargate, private subnet, Cloud Map DNS — MSK Connect documented as an alternative | `terraform/debezium.tf`, `debezium/connectors/mysql-source.json`, `debezium/README.md` |
+| Kafka UI | AKHQ container | AKHQ on ECS/Fargate, public subnet with admin-IP allowlist | `terraform/akhq.tf` |
 | Message bus | Self-hosted Kafka + Zookeeper | Amazon MSK — same topic names (`cdc.source_db.orders`, `cdc.source_db.customers`) | `terraform/msk.tf` |
 | Object storage | MinIO (S3-compatible) | Amazon S3 (native) | `terraform/s3.tf` |
 | Table format + catalog | Apache Iceberg + `tabulario/iceberg-rest` REST catalog | Delta Lake + Unity Catalog (catalog `lakehouse`, schemas `bronze`/`silver`/`gold`) | `terraform/unity_catalog.tf` |
@@ -66,7 +72,7 @@ stack to babysit.
 
 ```
 lakehouse-databricks/
-├── terraform/                # AWS (VPC, MSK, RDS, S3, secrets) + Databricks (UC, SQL Warehouse, jobs infra)
+├── terraform/                # AWS (VPC, MSK, RDS, S3, secrets, ECS Fargate for Debezium+AKHQ) + Databricks (UC, SQL Warehouse, jobs infra)
 ├── debezium/                 # CDC connector config (same contract as the original), deployment notes
 ├── src/streaming/            # Bronze ingestion: Kafka(MSK) CDC -> Delta, via Databricks Structured Streaming
 ├── dbt/                      # dbt-databricks project: bronze (ephemeral) -> silver (incremental) -> gold (table)
@@ -113,9 +119,10 @@ lakehouse-databricks/
    ```
 
 5. **Run the demo.** See `DEMO_SCENARIOS.md` — insert a row into MySQL,
-   watch it land in Bronze within one `cdc_bronze_ingestion_job` run (≤10
-   min, or trigger it manually), then in Gold after `dbt_orchestration_job`
-   runs.
+   watch it land in Bronze within one `cdc_bronze_ingestion_job` run (both
+   jobs run on a 3-hour cron; trigger manually with
+   `databricks bundle run cdc_bronze_ingestion_job -t dev` to skip the
+   wait), then in Gold after `dbt_orchestration_job` runs.
 
 ## Out of scope (by design)
 

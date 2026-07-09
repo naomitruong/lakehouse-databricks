@@ -8,6 +8,11 @@
 
 resource "aws_secretsmanager_secret" "mysql_debezium" {
   name = "${var.project_name}/mysql-debezium-credentials"
+
+  # Dev environments get destroyed/recreated often; skipping the recovery
+  # window avoids "already scheduled for deletion" errors on the next
+  # apply. Non-dev keeps AWS's default recovery window for safety.
+  recovery_window_in_days = var.environment == "dev" ? 0 : 30
 }
 
 resource "aws_secretsmanager_secret_version" "mysql_debezium" {

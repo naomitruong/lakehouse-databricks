@@ -11,12 +11,15 @@ CREATE TABLE IF NOT EXISTS orders (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-INSERT INTO orders (customer_id, amount) VALUES
-(1, 100.50),
-(2, 250.00),
-(3, 75.25),
-(4, 500.75),
-(5, 13.00);
+-- WHERE NOT EXISTS guard (rather than a plain INSERT) makes this safe to
+-- re-run — orders has no natural unique key to dedupe against otherwise,
+-- since this script is invoked on every `terraform apply` via null_resource
+-- mysql_init in terraform/debezium.tf.
+INSERT INTO orders (customer_id, amount)
+SELECT * FROM (
+  VALUES ROW(1, 100.50), ROW(2, 250.00), ROW(3, 75.25), ROW(4, 500.75), ROW(5, 13.00)
+) AS seed(customer_id, amount)
+WHERE NOT EXISTS (SELECT 1 FROM orders);
 
 CREATE TABLE IF NOT EXISTS customers (
   customer_id INT PRIMARY KEY,
@@ -25,12 +28,11 @@ CREATE TABLE IF NOT EXISTS customers (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-INSERT INTO customers (customer_id, customer_name) VALUES
-(1, 'Alice'),
-(2, 'Bob'),
-(3, 'Charlie'),
-(4, 'Diana'),
-(5, 'Eric');
+INSERT INTO customers (customer_id, customer_name)
+SELECT * FROM (
+  VALUES ROW(1, 'Alice'), ROW(2, 'Bob'), ROW(3, 'Charlie'), ROW(4, 'Diana'), ROW(5, 'Eric')
+) AS seed(customer_id, customer_name)
+WHERE NOT EXISTS (SELECT 1 FROM customers);
 
 -- RDS retains only 0 hours of binlog by default — this must be raised or
 -- Debezium loses history between snapshot and first streamed event.
@@ -40,5 +42,7 @@ CALL mysql.rds_set_configuration('binlog retention hours', 24);
 -- SLAVE/REPLICATION CLIENT directly (unlike SUPER, which RDS blocks), so
 -- the grants are otherwise identical to the self-hosted mysqld version.
 CREATE USER IF NOT EXISTS 'debezium'@'%' IDENTIFIED BY '${DEBEZIUM_MYSQL_PASSWORD}';
-GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'debezium'@'%';
+-- LOCK TABLES is required for the initial consistent snapshot (Debezium
+-- locks tables briefly while it reads the binlog position + existing rows).
+GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT, LOCK TABLES ON *.* TO 'debezium'@'%';
 FLUSH PRIVILEGES;

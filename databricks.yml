@@ -16,14 +16,16 @@ variables:
   checkpoint_root:
     description: "S3 path for streaming checkpoints — terraform output checkpoints_bucket"
     default: s3://REPLACE_WITH_CHECKPOINTS_BUCKET/bronze
-  spark_version:
-    default: 15.4.x-scala2.12
-  job_node_type:
-    default: m5d.large
   sql_warehouse_id:
     description: "terraform output databricks_sql_warehouse_id"
   job_cluster_policy_id:
-    description: "ID of databricks_cluster_policy.job_clusters (terraform state / `databricks cluster-policies list`)"
+    description: "terraform output job_cluster_policy_id — applied to the Bronze streaming job's new_cluster so it runs on classic compute inside the VPC (needed for MSK network access), not serverless"
+  job_node_type:
+    description: "Node type for the Bronze streaming job cluster — must match the cluster policy's node_type_id allowlist (terraform var.job_node_type)"
+    default: m5d.large
+  job_spark_version:
+    description: "Databricks Runtime version for the Bronze streaming job cluster — must match the cluster policy's fixed spark_version (terraform var.spark_version)"
+    default: 15.4.x-scala2.12
 
 include:
   - resources/*.yml
@@ -32,8 +34,11 @@ targets:
   dev:
     mode: development
     default: true
-    workspace:
-      host: ${var.databricks_host}
+    # No fixed workspace.host here: resolved from whichever CLI profile is
+    # active (e.g. `databricks bundle deploy -t dev --profile dev`, or the
+    # profile set via DATABRICKS_CONFIG_PROFILE / `databricks auth login`).
+    # prod pins an explicit host below so CI can't accidentally deploy
+    # to the wrong workspace.
   prod:
     mode: production
     workspace:

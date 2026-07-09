@@ -4,7 +4,7 @@
 # for the full explanation of what changed vs. the original and why.
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, current_timestamp, from_json, get_json_object, to_timestamp
+from pyspark.sql.functions import col, current_timestamp, from_json, to_timestamp
 from pyspark.sql.types import IntegerType, LongType, StringType, StructField, StructType
 
 dbutils.widgets.text("catalog", "lakehouse")
@@ -59,10 +59,10 @@ df_raw = (
 
 df = (
     df_raw.select(
-        from_json(
-            get_json_object(col("value").cast("string"), "$.payload"),
-            CDC_SCHEMA,
-        ).alias("d")
+        # The connector's `transforms.unwrap` (ExtractNewRecordState) already
+        # strips the Debezium envelope, so `value` is the flat record itself
+        # — no top-level "payload" key to project out here.
+        from_json(col("value").cast("string"), CDC_SCHEMA).alias("d")
     )
     .select("d.*")
     .filter(col("customer_id").isNotNull())

@@ -27,6 +27,21 @@ output "msk_cluster_arn" {
   value       = aws_msk_cluster.this.arn
 }
 
+output "debezium_connect_url" {
+  description = "Kafka Connect REST endpoint for the Debezium worker — set DEBEZIUM_CONNECT_URL to this before running scripts/register_debezium.sh"
+  value       = "http://debezium.${var.project_name}.internal:8083"
+}
+
+output "debezium_ecs_cluster" {
+  description = "ECS cluster name — use with `aws ecs list-tasks`/`aws ecs execute-command` to get a shell inside the VPC for debugging"
+  value       = aws_ecs_cluster.this.name
+}
+
+output "akhq_ecs_service" {
+  description = "ECS service name for the AKHQ Kafka UI — use with `aws ecs list-tasks --service-name <this>` then SSM port-forward to port 8080 (see terraform/akhq.tf for the full command)"
+  value       = aws_ecs_service.akhq.name
+}
+
 output "unity_catalog_root_bucket" {
   description = "S3 bucket backing the Unity Catalog external location (replaces s3://lakehouse/ on MinIO)"
   value       = aws_s3_bucket.unity_catalog_root.bucket
@@ -50,6 +65,11 @@ output "databricks_sql_warehouse_http_path" {
 output "unity_catalog_name" {
   description = "Unity Catalog catalog name (bronze/silver/gold schemas live under this)"
   value       = databricks_catalog.lakehouse.name
+}
+
+output "job_cluster_policy_id" {
+  description = "Cluster policy ID applied to job clusters — set as resources/cdc_bronze_job.yml's new_cluster.policy_id so streaming tasks run on classic compute inside the VPC (required for MSK network access) instead of serverless"
+  value       = databricks_cluster_policy.job_clusters.id
 }
 
 output "workspace_url" {

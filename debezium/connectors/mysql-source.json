@@ -21,6 +21,9 @@
         "transforms.unwrap.drop.tombstones": "false",
         "decimal.handling.mode": "string",
         "key.converter.schemas.enable": "false",
-        "value.converter.schemas.enable": "false"
+        "value.converter.schemas.enable": "false",
+        "topic.creation.enable": "true",
+        "topic.creation.default.replication.factor": "2",
+        "topic.creation.default.partitions": "3"
     }
 }

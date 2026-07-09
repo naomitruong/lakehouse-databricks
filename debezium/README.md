@@ -24,27 +24,44 @@ and **what it points at**:
 3. MSK Connect handles worker scaling, TLS to the MSK cluster, and restarts —
    there is no `docker exec debezium ...` step anymore.
 
-## Option B — self-managed Kafka Connect (closer to the original demo)
+## Option B — self-managed Kafka Connect (implemented, this repo's default)
 
-Run the same `debezium/connect:2.5` image (ECS task / EC2), with its
-worker config pointed at the MSK bootstrap brokers over TLS:
+Provisioned by `terraform/debezium.tf`: the `debezium/connect:2.5` image runs as a
+single-task ECS/Fargate service in the private subnets, with a Cloud Map DNS name
+(`debezium.<project_name>.internal:8083`) so the REST API has a stable address instead
+of an ephemeral task IP. No MySQL credentials are baked into the worker — only the
+connector config registered below needs them.
 
-```properties
-bootstrap.servers=${MSK_BOOTSTRAP_BROKERS}
-security.protocol=SSL
-```
-
-then register the connector exactly as before:
+Register the connector once the service is up:
 
 ```bash
+export DEBEZIUM_CONNECT_URL=$(terraform -chdir=terraform output -raw debezium_connect_url)
 bash scripts/register_debezium.sh
+```
+
+This must be run from inside the VPC (the REST API is private-only) — see "Debugging
+from inside the VPC" below.
+
+## Debugging from inside the VPC
+
+The Debezium ECS task has `enable_execute_command = true`, so it doubles as the in-VPC
+debug host — no separate bastion needed:
+
+```bash
+CLUSTER=$(terraform -chdir=terraform output -raw debezium_ecs_cluster)
+TASK=$(aws ecs list-tasks --cluster "$CLUSTER" --query 'taskArns[0]' --output text)
+aws ecs execute-command --cluster "$CLUSTER" --task "$TASK" \
+  --container debezium --interactive --command "/bin/bash"
+
+# from inside the shell:
+nc -zvw5 <rds-endpoint> 3306
 ```
 
 ## Verifying the CDC flow
 
 ```bash
 # Confirm the connector is running
-curl http://<connect-host>:8083/connectors/mysql-orders-source/status | python3 -m json.tool
+curl "$DEBEZIUM_CONNECT_URL/connectors/mysql-orders-source/status" | python3 -m json.tool
 
 # Insert a row on RDS MySQL and confirm it lands on the topic
 mysql -h <rds-endpoint> -u pipeline_user -p source_db \
@@ -52,4 +69,8 @@ mysql -h <rds-endpoint> -u pipeline_user -p source_db \
 ```
 
 Use `kafka-console-consumer` against the MSK bootstrap brokers (or the AWS
-console's MSK topic browser) in place of the original's AKHQ UI.
+console's MSK topic browser) for a quick check from inside the Debezium
+task's shell. For a proper UI, `terraform/akhq.tf` provisions the same AKHQ
+container as the original docker-compose stack, as a private ECS/Fargate
+service — see that file's header comment for the SSM port-forwarding
+command to reach it at `http://localhost:8080`.

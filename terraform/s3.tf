@@ -6,7 +6,8 @@
 # =============================================================
 
 resource "aws_s3_bucket" "unity_catalog_root" {
-  bucket = "${var.project_name}-uc-root-${var.environment}"
+  bucket        = "${var.project_name}-uc-root-${var.environment}"
+  force_destroy = var.environment != "prod"
 
   tags = {
     Name = "${var.project_name}-uc-root"
@@ -39,7 +40,8 @@ resource "aws_s3_bucket_public_access_block" "unity_catalog_root" {
 }
 
 resource "aws_s3_bucket" "checkpoints" {
-  bucket = "${var.project_name}-checkpoints-${var.environment}"
+  bucket        = "${var.project_name}-checkpoints-${var.environment}"
+  force_destroy = var.environment != "prod"
 
   tags = {
     Name = "${var.project_name}-checkpoints"
@@ -59,6 +61,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "checkpoints" {
   rule {
     id     = "expire-old-checkpoint-versions"
     status = "Enabled"
+
+    filter {}
 
     noncurrent_version_expiration {
       noncurrent_days = 7

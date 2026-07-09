@@ -52,6 +52,14 @@ resource "aws_security_group" "rds" {
     cidr_blocks = [var.vpc_cidr]
   }
 
+  ingress {
+    description = "MySQL from admin public IP (DBeaver access)"
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = [var.admin_ip_cidr]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -89,5 +97,41 @@ resource "aws_security_group" "debezium" {
 
   tags = {
     Name = "${var.project_name}-debezium-sg"
+  }
+}
+
+# AKHQ (Kafka UI) — like Debezium's REST API, reachable only from inside
+# the VPC. Operators use `aws ecs execute-command` / SSM port-forwarding
+# to reach the web UI from a local machine; nothing is exposed publicly.
+resource "aws_security_group" "akhq" {
+  name        = "${var.project_name}-akhq-sg"
+  description = "Security group for the AKHQ Kafka UI"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "AKHQ web UI from within the VPC"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    description = "AKHQ web UI from admin public IP (same pattern as RDS access)"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [var.admin_ip_cidr]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-akhq-sg"
   }
 }

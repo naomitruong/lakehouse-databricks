@@ -19,7 +19,7 @@
 # airflow/dags/kafka_to_bronze_batch_dag.py).
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, current_timestamp, from_json, get_json_object, to_timestamp
+from pyspark.sql.functions import col, current_timestamp, from_json, to_timestamp
 from pyspark.sql.types import DecimalType, IntegerType, LongType, StringType, StructField, StructType
 
 dbutils.widgets.text("catalog", "lakehouse")
@@ -53,17 +53,18 @@ spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.bronze")
 spark.sql(
     f"""
     CREATE TABLE IF NOT EXISTS {BRONZE_TABLE} (
-        order_id     INT,
-        customer_id  INT,
-        amount       DECIMAL(10, 2),
-        order_date   TIMESTAMP,
-        _cdc_deleted BOOLEAN,
-        _cdc_op      STRING,
-        _cdc_ts_ms   BIGINT,
-        _ingested_at TIMESTAMP
+        order_id      INT,
+        customer_id   INT,
+        amount        DECIMAL(10, 2),
+        order_date    TIMESTAMP,
+        order_date_day DATE GENERATED ALWAYS AS (CAST(order_date AS DATE)),
+        _cdc_deleted  BOOLEAN,
+        _cdc_op       STRING,
+        _cdc_ts_ms    BIGINT,
+        _ingested_at  TIMESTAMP
     )
     USING DELTA
-    PARTITIONED BY (days(order_date))
+    PARTITIONED BY (order_date_day)
     """
 )
 
@@ -79,10 +80,10 @@ df_raw = (
 
 df = (
     df_raw.select(
-        from_json(
-            get_json_object(col("value").cast("string"), "$.payload"),
-            CDC_SCHEMA,
-        ).alias("d")
+        # The connector's `transforms.unwrap` (ExtractNewRecordState) already
+        # strips the Debezium envelope, so `value` is the flat record itself
+        # — no top-level "payload" key to project out here.
+        from_json(col("value").cast("string"), CDC_SCHEMA).alias("d")
     )
     .select("d.*")
     .filter(col("order_id").isNotNull())
