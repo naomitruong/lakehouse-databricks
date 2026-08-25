@@ -1,4 +1,4 @@
-.PHONY: tf-init tf-plan tf-apply tf-destroy register-debezium bundle-deploy bundle-run dbt-run dbt-test dbt-docs bi-export
+.PHONY: tf-init tf-plan tf-apply tf-destroy register-debezium bundle-deploy bundle-run bundle-run-bronze dbt-run dbt-test dbt-docs bi-export
 
 # ---- Terraform (AWS + Databricks infra) ----
 tf-init:
@@ -18,11 +18,18 @@ register-debezium:
 	bash scripts/register_debezium.sh
 
 # ---- Databricks Workflows (Asset Bundle) — replaces `airflow dags trigger` ----
+# Pin the profile rather than relying on default_profile in ~/.databrickscfg,
+# which is how an earlier deploy went to the wrong workspace.
+DATABRICKS_PROFILE ?= newacct
+
 bundle-deploy:
-	databricks bundle deploy -t dev
+	databricks bundle deploy -t dev --profile $(DATABRICKS_PROFILE)
 
 bundle-run:
-	databricks bundle run lakehouse_orchestration_job -t dev
+	databricks bundle run dbt_orchestration_job -t dev --profile $(DATABRICKS_PROFILE)
+
+bundle-run-bronze:
+	databricks bundle run cdc_bronze_ingestion_job -t dev --profile $(DATABRICKS_PROFILE)
 
 # ---- dbt (dbt-databricks adapter, run against the SQL Warehouse) ----
 dbt-run:

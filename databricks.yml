@@ -34,11 +34,11 @@ targets:
   dev:
     mode: development
     default: true
-    # No fixed workspace.host here: resolved from whichever CLI profile is
-    # active (e.g. `databricks bundle deploy -t dev --profile dev`, or the
-    # profile set via DATABRICKS_CONFIG_PROFILE / `databricks auth login`).
-    # prod pins an explicit host below so CI can't accidentally deploy
-    # to the wrong workspace.
+    # Both targets pin the host explicitly. Leaving it to whichever CLI
+    # profile happens to be active is how an earlier deploy landed in a
+    # different workspace than the one Terraform had provisioned.
+    workspace:
+      host: ${var.databricks_host}
   prod:
     mode: production
     workspace:

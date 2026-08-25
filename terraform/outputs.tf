@@ -73,6 +73,6 @@ output "job_cluster_policy_id" {
 }
 
 output "workspace_url" {
-  description = "Databricks workspace URL (only populated when create_workspace = true)"
-  value       = var.create_workspace ? databricks_mws_workspaces.this[0].workspace_url : var.databricks_host
+  description = "Databricks workspace URL — the created workspace when create_workspace = true, otherwise var.databricks_host"
+  value       = var.create_workspace ? one(databricks_mws_workspaces.this[*].workspace_url) : var.databricks_host
 }

@@ -20,7 +20,7 @@
 # with any external_id, then read the real one back from state) before
 # updating it here.
 locals {
-  uc_external_id = "ea52ba30-f337-4b3b-a2b5-ed0ccc51f169"
+  uc_external_id = "bee79414-7678-40d4-96ab-41cda931b811"
 }
 
 # IAM role Unity Catalog assumes (via Databricks' UC master role) to

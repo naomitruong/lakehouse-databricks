@@ -7,56 +7,56 @@
 <meta name="description" content="A Databricks-native CDC → Bronze/Silver/Gold lakehouse, deployed on AWS with Terraform and orchestrated via Databricks Workflows." />
 <style>
   :root {
-    --bg: #0b0e14;
-    --bg-alt: #11151f;
-    --card: #151a26;
-    --card-border: #232a3a;
-    --text: #e7eaf2;
-    --text-dim: #9aa4b8;
-    --accent: #4fd1c5;
-    --accent-2: #7c9cff;
+    --bg: #0a1410;
+    --bg-alt: #0f1c16;
+    --card: #142620;
+    --card-border: #24392f;
+    --text: #e6f2ec;
+    --text-dim: #8fa89b;
+    --accent: #2dd4a0;
+    --accent-2: #5eead4;
     --accent-3: #f2b04c;
-    --ok: #57d38c;
+    --ok: #4ade80;
     --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
   @media (prefers-color-scheme: light) {
     :root {
-      --bg: #f6f7fb;
+      --bg: #f4f8f5;
       --bg-alt: #ffffff;
       --card: #ffffff;
-      --card-border: #e3e6ee;
-      --text: #1a1f2b;
-      --text-dim: #5b6472;
-      --accent: #0d9488;
-      --accent-2: #4457c9;
+      --card-border: #dbe6df;
+      --text: #14201a;
+      --text-dim: #55695f;
+      --accent: #0f9d70;
+      --accent-2: #0d8a7a;
       --accent-3: #b5750f;
       --ok: #1f9d5c;
     }
   }
   :root[data-theme="light"] {
-    --bg: #f6f7fb;
+    --bg: #f4f8f5;
     --bg-alt: #ffffff;
     --card: #ffffff;
-    --card-border: #e3e6ee;
-    --text: #1a1f2b;
-    --text-dim: #5b6472;
-    --accent: #0d9488;
-    --accent-2: #4457c9;
+    --card-border: #dbe6df;
+    --text: #14201a;
+    --text-dim: #55695f;
+    --accent: #0f9d70;
+    --accent-2: #0d8a7a;
     --accent-3: #b5750f;
     --ok: #1f9d5c;
   }
   :root[data-theme="dark"] {
-    --bg: #0b0e14;
-    --bg-alt: #11151f;
-    --card: #151a26;
-    --card-border: #232a3a;
-    --text: #e7eaf2;
-    --text-dim: #9aa4b8;
-    --accent: #4fd1c5;
-    --accent-2: #7c9cff;
+    --bg: #0a1410;
+    --bg-alt: #0f1c16;
+    --card: #142620;
+    --card-border: #24392f;
+    --text: #e6f2ec;
+    --text-dim: #8fa89b;
+    --accent: #2dd4a0;
+    --accent-2: #5eead4;
     --accent-3: #f2b04c;
-    --ok: #57d38c;
+    --ok: #4ade80;
   }
 
   * { box-sizing: border-box; }
@@ -292,6 +292,78 @@
   footer a { color: var(--accent); text-decoration: none; }
   footer a:hover { text-decoration: underline; }
 
+  /* ---- Code blocks ---- */
+  pre.code {
+    background: var(--bg-alt);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+    margin: 0;
+  }
+  pre.code .c { color: var(--text-dim); }
+  pre.code .k { color: var(--accent); }
+
+  /* ---- Numbered steps ---- */
+  .steps { display: grid; gap: 16px; }
+  .step-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 20px 22px;
+  }
+  .step-card .step-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .step-card .num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-radius: 5px;
+    padding: 2px 8px;
+  }
+  .step-card h4 { margin: 0; font-size: 16px; }
+  .step-card p { margin: 0 0 12px; color: var(--text-dim); font-size: 13.5px; }
+
+  /* ---- Layer cards ---- */
+  .layer-card { position: relative; }
+  .layer-card ul {
+    margin: 10px 0 0;
+    padding-left: 18px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .layer-card li { margin-bottom: 4px; }
+  .layer-card .tables {
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--accent-2);
+    word-break: break-all;
+  }
+
+  /* ---- Demo list ---- */
+  .demo { border-top: 1px solid var(--card-border); padding: 16px 0; display: flex; gap: 16px; flex-wrap: wrap; }
+  .demo:first-child { border-top: none; }
+  .demo .demo-n {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-3);
+    flex: 0 0 62px;
+    padding-top: 2px;
+  }
+  .demo .demo-body { flex: 1 1 320px; }
+  .demo h4 { margin: 0 0 4px; font-size: 15px; }
+  .demo p { margin: 0; color: var(--text-dim); font-size: 13.5px; }
+
   code.inline {
     font-family: var(--mono);
     background: var(--bg-alt);
@@ -488,6 +560,174 @@
         </tbody>
       </table>
     </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="section-title">Medallion Layers</h2>
+    <h3 class="section-heading">One Unity Catalog, three schemas, clear contracts</h3>
+    <div class="grid">
+      <div class="card layer-card" style="border-top:3px solid #b8865e;">
+        <span class="tag">bronze</span>
+        <h4>Raw CDC, append-only</h4>
+        <p>Every Debezium event exactly as it arrived — never mutated, never deleted in place.</p>
+        <ul>
+          <li>Written by Structured Streaming from MSK</li>
+          <li><code class="inline">trigger(availableNow=True)</code> + real checkpoints</li>
+          <li>Full change history for time travel</li>
+        </ul>
+        <div class="tables">lakehouse.bronze.orders · lakehouse.bronze.customers</div>
+      </div>
+      <div class="card layer-card" style="border-top:3px solid #a9b2c3;">
+        <span class="tag">silver</span>
+        <h4>Deduped current state</h4>
+        <p>Latest row per key via <code class="inline">ROW_NUMBER()</code>, deletes removed, types conformed.</p>
+        <ul>
+          <li>dbt incremental models, <code class="inline">merge</code> strategy</li>
+          <li>dbt tests gate promotion to Gold</li>
+        </ul>
+        <div class="tables">lakehouse.silver.orders_silver · lakehouse.silver.customers_silver</div>
+      </div>
+      <div class="card layer-card" style="border-top:3px solid var(--accent-3);">
+        <span class="tag">gold</span>
+        <h4>Business-ready star schema</h4>
+        <p>Facts and aggregates the SQL Warehouse and BI tools query directly.</p>
+        <ul>
+          <li>dbt table models, rebuilt each run</li>
+          <li>Serves Tableau / Looker / Power BI</li>
+        </ul>
+        <div class="tables">lakehouse.gold.fact_orders · lakehouse.gold.agg_daily_revenue</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="section-title">Quick Start</h2>
+    <h3 class="section-heading">From empty account to data in Gold</h3>
+    <div class="steps">
+
+      <div class="step-card">
+        <div class="step-head"><span class="num">01</span><h4>Provision the infrastructure</h4></div>
+        <p>Terraform stands up VPC, RDS MySQL, MSK, S3, Secrets Manager, ECS services for Debezium + AKHQ, and the Databricks side (Unity Catalog, SQL Warehouse, cluster policy).</p>
+<pre class="code"><span class="c"># fill in secrets first</span>
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+cp .env.example .env
+
+make tf-init
+make tf-plan
+make tf-apply</pre>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="num">02</span><h4>Bootstrap the CDC source</h4></div>
+        <p>Creates <code class="inline">source_db</code>, the demo tables, and the replication user with binlog privileges.</p>
+<pre class="code">mysql -h $(terraform -chdir=terraform output -raw mysql_endpoint) \
+  -u pipeline_admin -p source_db &lt; scripts/init_mysql_cdc.sql</pre>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="num">03</span><h4>Register the Debezium connector</h4></div>
+        <p>Posts <code class="inline">debezium/connectors/mysql-source.json</code> to the Kafka Connect worker; topics <code class="inline">cdc.source_db.*</code> start filling.</p>
+<pre class="code">make register-debezium</pre>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="num">04</span><h4>Deploy the Databricks Workflows</h4></div>
+        <p>The Asset Bundle deploys both jobs as code — no Airflow, no DAG files.</p>
+<pre class="code">databricks configure   <span class="c"># or export DATABRICKS_HOST / DATABRICKS_TOKEN</span>
+make bundle-deploy</pre>
+      </div>
+
+      <div class="step-card">
+        <div class="step-head"><span class="num">05</span><h4>Run the pipeline</h4></div>
+        <p>Both jobs are on a 3-hour cron; trigger them manually to skip the wait, then query Gold from a SQL editor.</p>
+<pre class="code">make bundle-run-bronze   <span class="c"># MSK → Bronze</span>
+make bundle-run          <span class="c"># dbt: Bronze → Silver → Gold</span>
+
+<span class="k">SELECT</span> * <span class="k">FROM</span> lakehouse.gold.agg_daily_revenue <span class="k">ORDER BY</span> order_date_day <span class="k">DESC</span>;</pre>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="section-title">Demo Scenarios</h2>
+    <h3 class="section-heading">Seven things this pipeline can show you</h3>
+    <div>
+      <div class="demo">
+        <div class="demo-n">Demo 1</div>
+        <div class="demo-body">
+          <h4>End-to-end CDC flow</h4>
+          <p>Insert a row into MySQL, watch it land on MSK, then in Bronze, then in <code class="inline">gold.fact_orders</code> — about five minutes.</p>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="demo-n">Demo 2</div>
+        <div class="demo-body">
+          <h4>Delta time travel</h4>
+          <p><code class="inline">VERSION AS OF</code> / <code class="inline">TIMESTAMP AS OF</code> and <code class="inline">DESCRIBE HISTORY</code> on the append-only Bronze table.</p>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="demo-n">Demo 3</div>
+        <div class="demo-body">
+          <h4>Schema evolution</h4>
+          <p><code class="inline">ADD COLUMN</code> with zero downtime and no file rewrite; old rows simply read back <code class="inline">NULL</code>.</p>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="demo-n">Demo 4</div>
+        <div class="demo-body">
+          <h4>Partition evolution</h4>
+          <p>Repartition a live table and keep querying it — Delta's answer to Iceberg partition evolution.</p>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="demo-n">Demo 5</div>
+        <div class="demo-body">
+          <h4>Federation query</h4>
+          <p>Join Delta Gold tables against the live RDS source through a Lakehouse Federation foreign catalog — no copy required.</p>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="demo-n">Demo 6</div>
+        <div class="demo-body">
+          <h4>Lineage &amp; docs</h4>
+          <p>Unity Catalog table/column lineage comes for free; <code class="inline">dbt docs</code> adds the model-level DAG.</p>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="demo-n">Demo 7</div>
+        <div class="demo-body">
+          <h4>Data quality gates</h4>
+          <p>A failing dbt test stops the workflow before Gold is rebuilt — the layer boundary is enforced by the orchestrator.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="section-title">Repository Layout</h2>
+    <h3 class="section-heading">Where everything lives</h3>
+<pre class="code">lakehouse-databricks/
+├── terraform/        <span class="c"># AWS (VPC, MSK, RDS, S3, secrets, ECS) + Databricks (UC, SQL Warehouse)</span>
+├── debezium/         <span class="c"># CDC connector config + deployment notes</span>
+├── src/streaming/    <span class="c"># Bronze ingestion: MSK CDC → Delta, Structured Streaming</span>
+├── dbt/              <span class="c"># dbt-databricks: bronze → silver (incremental) → gold (table)</span>
+├── databricks.yml    <span class="c"># Asset Bundle: orchestration-as-code (replaces airflow/dags/)</span>
+├── resources/        <span class="c"># Workflow definitions included by databricks.yml</span>
+├── bi/               <span class="c"># Gold → Tableau / Looker / Power BI export</span>
+├── governance/       <span class="c"># Unity Catalog lineage &amp; governance notes</span>
+├── scripts/          <span class="c"># MySQL CDC bootstrap, Debezium registration</span>
+├── ARCHITECTURE.md   <span class="c"># Component and data-flow diagrams</span>
+└── DEMO_SCENARIOS.md <span class="c"># The seven demos, in full</span></pre>
   </div>
 </section>
 

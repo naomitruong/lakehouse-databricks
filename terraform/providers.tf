@@ -54,7 +54,7 @@ provider "databricks" {
   alias      = "account"
   host       = "https://accounts.cloud.databricks.com"
   account_id = var.databricks_account_id
-  profile    = "account"
+  profile    = "newacct-account"
 }
 
 # Workspace-level provider — used for Unity Catalog objects, SQL warehouses,
@@ -65,6 +65,8 @@ provider "databricks" {
   # workspace_url already includes the https:// scheme — do not prepend it
   # again here (doing so produces "https://https://..." which the SDK
   # fails to parse, misresolving "https" itself as the hostname).
-  host    = var.create_workspace ? databricks_mws_workspaces.this[0].workspace_url : var.databricks_host
-  profile = "new-workspace"
+  # `one()` rather than `[0]`: with create_workspace = false the resource has
+  # count = 0, and indexing it directly errors even on the untaken branch.
+  host    = var.create_workspace ? one(databricks_mws_workspaces.this[*].workspace_url) : var.databricks_host
+  profile = "newacct"
 }
