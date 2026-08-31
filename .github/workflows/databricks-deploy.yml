@@ -1,0 +1,79 @@
+
+name: Deploy Databricks Bundle
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'databricks.yml'
+      - 'src/**'
+      - 'resources/**'
+      - '.github/workflows/databricks-deploy.yml'
+
+  pull_request:
+    branches: [main]
+    paths:
+      - 'databricks.yml'
+      - 'src/**'
+      - 'resources/**'
+
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Bundle target to deploy'
+        type: choice
+        options: [qa, dev]
+        default: qa
+permissions:
+  contents: read
+
+concurrency:
+  group: databricks-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+  DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+
+jobs:
+  validate:
+    name: Validate configuration
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Validate bundle
+        run: databricks bundle validate -t qa
+
+      - name: Preview changes (create / update / delete)
+        run: databricks bundle plan -t qa
+
+  deploy:
+    name: Deploy to workspace
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    environment: production
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+        
+      - name: Resolve target
+        id: t
+        run: echo "target=${{ github.event.inputs.target || 'qa' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate bundle
+        run: databricks bundle validate -t ${{ steps.t.outputs.target }}
+
+      - name: Deploy bundle
+        run: databricks bundle deploy -t ${{ steps.t.outputs.target }}
+
+      - name: List deployed resources
+        run: databricks bundle summary -t ${{ steps.t.outputs.target }}
