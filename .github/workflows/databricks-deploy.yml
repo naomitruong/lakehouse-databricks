@@ -33,6 +33,7 @@ concurrency:
 env:
   DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
   DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
 
 jobs:
   validate:
@@ -46,6 +47,16 @@ jobs:
       - name: Install Databricks CLI
         uses: databricks/setup-cli@main
 
+      - name: Check credentials
+        run: |
+          if [ -n "$DATABRICKS_CLIENT_ID" ] && [ -n "$DATABRICKS_CLIENT_SECRET" ]; then
+            echo "Auth: OAuth M2M (client ${DATABRICKS_CLIENT_ID:0:8}...)"
+          elif [ -n "$DATABRICKS_TOKEN" ]; then
+            echo "Auth: personal access token"
+          else
+            echo "::error::No Databricks credentials. Add DATABRICKS_CLIENT_ID + DATABRICKS_CLIENT_SECRET (or DATABRICKS_TOKEN) under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
       - name: Validate bundle
         run: databricks bundle validate -t qa
 
@@ -64,7 +75,17 @@ jobs:
 
       - name: Install Databricks CLI
         uses: databricks/setup-cli@main
-        
+
+      - name: Check credentials
+        run: |
+          if [ -n "$DATABRICKS_CLIENT_ID" ] && [ -n "$DATABRICKS_CLIENT_SECRET" ]; then
+            echo "Auth: OAuth M2M (client ${DATABRICKS_CLIENT_ID:0:8}...)"
+          elif [ -n "$DATABRICKS_TOKEN" ]; then
+            echo "Auth: personal access token"
+          else
+            echo "::error::No Databricks credentials. Add DATABRICKS_CLIENT_ID + DATABRICKS_CLIENT_SECRET (or DATABRICKS_TOKEN) under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
       - name: Resolve target
         id: t
         run: echo "target=${{ github.event.inputs.target || 'qa' }}" >> "$GITHUB_OUTPUT"
