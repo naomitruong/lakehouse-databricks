@@ -1,0 +1,42 @@
+
+bundle:
+  name: lakehouse-databricks
+
+variables:
+  databricks_host:
+    description: "Workspace URL — same value as terraform output workspace_url"
+  uc_catalog:
+    description: "Unity Catalog catalog name"
+    default: lakehouse
+  checkpoint_root:
+    description: "S3 path for streaming checkpoints — terraform output checkpoints_bucket"
+    default: s3://REPLACE_WITH_CHECKPOINTS_BUCKET/bronze
+  sql_warehouse_id:
+    description: "terraform output databricks_sql_warehouse_id"
+  job_cluster_policy_id:
+    description: "terraform output job_cluster_policy_id — applied to the Bronze streaming job's new_cluster so it runs on classic compute inside the VPC (needed for MSK network access), not serverless"
+  job_node_type:
+    description: "Node type for the Bronze streaming job cluster — must match the cluster policy's node_type_id allowlist (terraform var.job_node_type)"
+    default: m5d.large
+  job_spark_version:
+    description: "Databricks Runtime version for the Bronze streaming job cluster — must match the cluster policy's fixed spark_version (terraform var.spark_version)"
+    default: 15.4.x-scala2.12
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    # Both targets pin the host explicitly. Leaving it to whichever CLI
+    # profile happens to be active is how an earlier deploy landed in a
+    # different workspace than the one Terraform had provisioned.
+    workspace:
+      host: ${var.databricks_host}
+  prod:
+    mode: production
+    workspace:
+      host: ${var.databricks_host}
+    run_as:
+      service_principal_name: "lakehouse-databricks-prod-sp"
