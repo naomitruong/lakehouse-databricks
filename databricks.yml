@@ -8,6 +8,20 @@ include:
   - resources/pipelines/*.yml
   
 
+sync:
+  exclude:
+    - ".env*"
+    - "terraform/**"
+    - "dbt/**"
+    - "bi/**"
+    - "debezium/**"
+    - "governance/**"
+    - "scripts/**"
+    - "*.md"
+    - "*.txt"
+    - "index.html"
+    - ".claude/**"
+
 permissions:
   - group_name: de_grp
     level: CAN_MANAGE
